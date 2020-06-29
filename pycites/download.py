@@ -170,15 +170,15 @@ column_types = {
 
 
 # %%
-def update_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup=False):
+def get_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup=False):
     # TODO: cleanup
     if not zip_file.exists() or force_update:
         download_cites_trade_zip(zip_file)
-        zip_md5 = checksum(zip_file)
-        if zip_md5 != known_zip_md5:
-            raise ValueError(
-                f"md5 sum of zip file ({zip_md5}) does not match known value: {known_zip_md5}"
-            )
+    zip_md5 = checksum(zip_file)
+    if zip_md5 != known_zip_md5:
+        raise ValueError(
+            f"md5 sum of zip file ({zip_md5}) does not match known value: {known_zip_md5}"
+        )
     extract_files(zip_file, csv_file.parent, cleanup=cleanup)
     df = combine_csv(zip_file.parent, cleanup)
     df.to_csv(csv_file, index=False)
@@ -189,12 +189,12 @@ def update_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup
 def load_data(csv_file=csv_file, update=False, update_kwargs=None):
     if update:
         if update_kwargs is not None:
-            update_data(**update_kwargs)
+            get_data(**update_kwargs)
         else:
-            update_data()
+            get_data()
 
     if not csv_file.exists():
-        raise FileNotFoundError(f"The file {csv_file} does not exist!")
+        raise FileNotFoundError(f"The file {csv_file} does not exist! Run `pycites.get_data() to download")
 
     csv_md5 = checksum(csv_file)
     if csv_md5 != known_csv_md5:
