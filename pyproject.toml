@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pycites"
-version = "0.1.0"
+version = "0.1.2"
 description = "Package to download and interact with the CITES Trade Database in Python"
 authors = ["Lee Tirrell <tirrell.le@gmail.com>"]
 license = "MIT"
