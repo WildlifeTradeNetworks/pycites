@@ -61,7 +61,7 @@ def download_cites_trade_zip(zip_file):
     cachedir = zip_file.parent
     cachedir.mkdir(parents=True, exist_ok=True)
     print(
-        f"Downloading CITES Trade database zip file from {cites_url} to {zip_file}..."
+        f"Downloading CITES Trade database zip file from {cites_url} to {zip_file} ..."
     )
     with requests.get(cites_url, stream=True) as r:
         local_filename = cachedir / zip_file
@@ -80,7 +80,7 @@ def download_cites_trade_zip(zip_file):
 # %%
 def extract_files(zip_file, cleanup=False):
     dest = zip_file.parent  # TODO: make a subdir to contain this?
-    print(f"Extracting CITES Trade database zip file {zip_file} to {dest}...")
+    print(f"Extracting CITES Trade database zip file {zip_file} to {dest} ...")
     # dest.mkdir(parents=True, exist_ok=True)  # no longer necessary because already exists
     with zipfile.ZipFile(zip_file, "r") as zip_file:
         for file in tqdm(
@@ -95,7 +95,7 @@ def extract_files(zip_file, cleanup=False):
 def combine_csv(csv_dir, cleanup=False):
     datasets = []
     files = list(csv_dir.glob("*.csv"))
-    print(f"Reading in CITES Trade database CSV files from {csv_dir}...")
+    print(f"Reading in CITES Trade database CSV files from {csv_dir} ...")
     for f in tqdm(iterable=files, total=len(files), unit="files"):
         d = pd.read_csv(f, low_memory=False)
         # make sure Year and Quantiy values are numeric (int and float, respectively)
@@ -142,8 +142,12 @@ datadir = Path(user_data_dir("pycites", "ltirrell"))
 zip_file = cachedir / get_zip_filename()
 csv_file = datadir / zip_file.name.replace("zip", "csv.gz")
 
-known_zip_md5 = "3d774b109c3ebf3594cf0fd4c20c1d1b"
-known_csv_md5 = "920614bc5a9219849b1626a653d5ea64"
+# checksums for v2019.2
+# known_zip_md5 = "3d774b109c3ebf3594cf0fd4c20c1d1b"
+# known_csv_md5 = "920614bc5a9219849b1626a653d5ea64"
+# checksums for v2020.1, latest
+known_zip_md5 = "d64d99182bdfb3696f6ce91687ccdd81"
+known_csv_md5 = "417b1cc7be04a7328e654fc74098d205"
 
 # column dtypes (not currently used)
 column_types = {
@@ -179,8 +183,9 @@ def get_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup=Fa
         raise ValueError(
             f"md5 sum of zip file ({zip_md5}) does not match known value: {known_zip_md5}"
         )
-    extract_files(zip_file, csv_file.parent, cleanup=cleanup)
+    extract_files(zip_file, cleanup=cleanup)
     df = combine_csv(zip_file.parent, cleanup)
+    print(f"Saving combined CITES Trade database CSV files to {csv_file} ...")
     df.to_csv(csv_file, index=False)
     return csv_file
 
@@ -204,3 +209,6 @@ def load_data(csv_file=csv_file, update=False, update_kwargs=None):
 
     df = pd.read_csv(csv_file)
     return df
+
+
+# %%

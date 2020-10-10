@@ -1,3 +1,3 @@
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
-from .download import get_data, load_data
+from .cites_download import get_data, load_data
