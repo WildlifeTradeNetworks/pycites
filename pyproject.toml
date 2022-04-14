@@ -12,6 +12,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 exclude = ["pycites/*.ipynb"]
+packages = [
+    {include = "pycites"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
@@ -24,6 +27,12 @@ click = ">=7.0"
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
 black = "^22.1.0"
+isort = "^5.10.1"
+jupyterlab-code-formatter = "^1.4.10"
+vaex-core = "^4.8.0"
+vaex-hdf5 = "^0.12.0"
+vaex-viz = "^0.5.1"
+vaex-jupyter = "^0.7.0"
 
 [tool.poetry.extras]
 
