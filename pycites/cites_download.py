@@ -1,19 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.5.0
-#   kernelspec:
-#     display_name: 'Python 3.8.3 64-bit (''pycites'': conda)'
-#     language: python
-#     name: python38364bitpycitesconda301c197b92604ee8a3a0bec38518af4f
-# ---
-
-# %%
 from glob import glob
 import hashlib
 from pathlib import Path
@@ -31,7 +15,7 @@ from tqdm import tqdm
 # import pyarrow.feather as feather
 # import pyarrow.parquet as pq
 
-# %%
+
 def get_zip_filename():
     with requests.head(cites_url) as r:
         zip_file = (
@@ -42,9 +26,8 @@ def get_zip_filename():
     return zip_file
 
 
-# %%
 def checksum(filename, hash_factory=hashlib.md5, chunk_num_blocks=128):
-    """ https://stackoverflow.com/a/4213255 """
+    """https://stackoverflow.com/a/4213255"""
     h = hash_factory()
     with open(filename, "rb") as f:
         for chunk in iter(lambda: f.read(chunk_num_blocks * h.block_size), b""):
@@ -52,7 +35,6 @@ def checksum(filename, hash_factory=hashlib.md5, chunk_num_blocks=128):
     return h.hexdigest()
 
 
-# %%
 def download_cites_trade_zip(zip_file):
     """
     https://stackoverflow.com/a/39217788
@@ -77,9 +59,9 @@ def download_cites_trade_zip(zip_file):
     #                     t.update()
 
 
-# %%
 def extract_files(zip_file, cleanup=False):
-    dest = zip_file.parent  # TODO: make a subdir to contain this?
+    dest = (zip_file.parent) / zip_file.stem
+    dest.mkdir(exist_ok=True)
     print(f"Extracting CITES Trade database zip file {zip_file} to {dest} ...")
     # dest.mkdir(parents=True, exist_ok=True)  # no longer necessary because already exists
     with zipfile.ZipFile(zip_file, "r") as zip_file:
@@ -91,23 +73,22 @@ def extract_files(zip_file, cleanup=False):
         zip_file.unlink()
 
 
-# %%
 def combine_csv(csv_dir, cleanup=False):
     datasets = []
-    files = list(csv_dir.glob("*.csv"))
+    files = list(csv_dir.glob("**/*.csv"))
     print(f"Reading in CITES Trade database CSV files from {csv_dir} ...")
     for f in tqdm(iterable=files, total=len(files), unit="files"):
+        print(f)
         d = pd.read_csv(f, low_memory=False)
         # make sure Year and Quantiy values are numeric (int and float, respectively)
         # drop rows that are missing Year
-        # ensure Year is between 1970 and 2020
+        # ensure Year is after 1970
         d = d[pd.to_numeric(d["Year"], errors="coerce").notnull()]
         d = d.dropna(subset=["Year"])
         d["Year"] = d["Year"].astype(int)
         d["Quantity"] = pd.to_numeric(d["Quantity"], errors="coerce")
         d["Quantity"] = d["Quantity"].astype(float)
         d = d[d["Year"] > 1970]
-        d = d[d["Year"] < 2020]
         datasets.append(d)
     print("Combining CSV files into a single DataFrame...")
     df = pd.concat(datasets)
@@ -132,22 +113,35 @@ def combine_csv(csv_dir, cleanup=False):
     return df
 
 
-# %%
 # default locations
 cites_url = "https://trade.cites.org/cites_trade/download_db"
 default_filename = "trade_database.zip"
 
-cachedir = Path(user_cache_dir("pycites", "ltirrell"))
-datadir = Path(user_data_dir("pycites", "ltirrell"))
+cachedir = Path(
+    user_cache_dir(
+        appname="pycites",
+        appauthor="ltirrell",
+    )
+)
+datadir = Path(
+    user_data_dir(
+        appname="pycites",
+        appauthor="ltirrell",
+    )
+)
 zip_file = cachedir / get_zip_filename()
 csv_file = datadir / zip_file.name.replace("zip", "csv.gz")
 
 # checksums for v2019.2
 # known_zip_md5 = "3d774b109c3ebf3594cf0fd4c20c1d1b"
 # known_csv_md5 = "920614bc5a9219849b1626a653d5ea64"
-# checksums for v2020.1, latest
-known_zip_md5 = "d64d99182bdfb3696f6ce91687ccdd81"
-known_csv_md5 = "417b1cc7be04a7328e654fc74098d205"
+# checksums for v2020.1
+# known_zip_md5 = "d64d99182bdfb3696f6ce91687ccdd81"
+# known_csv_md5 = "417b1cc7be04a7328e654fc74098d205"
+
+# checksums for v2021.1, latest
+known_zip_md5 = "61da459e00ba741dbdb6bd8b89159078"
+known_csv_md5 = "fdb89aa4387f3e99779885a1193e485a"
 
 # column dtypes (not currently used)
 column_types = {
@@ -173,7 +167,6 @@ column_types = {
 }
 
 
-# %%
 def get_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup=False):
     # TODO: cleanup
     if not zip_file.exists() or force_update:
@@ -181,16 +174,17 @@ def get_data(zip_file=zip_file, csv_file=csv_file, force_update=True, cleanup=Fa
     zip_md5 = checksum(zip_file)
     if zip_md5 != known_zip_md5:
         raise ValueError(
-            f"md5 sum of zip file ({zip_md5}) does not match known value: {known_zip_md5}"
+            f"md5 sum of zip file {zip_file} ({zip_md5}) does not match known value: {known_zip_md5}"
         )
     extract_files(zip_file, cleanup=cleanup)
-    df = combine_csv(zip_file.parent, cleanup)
+    df = combine_csv((zip_file.parent) / zip_file.stem, cleanup)
     print(f"Saving combined CITES Trade database CSV files to {csv_file} ...")
-    df.to_csv(csv_file, index=False)
+    df.to_csv(
+        csv_file, index=False, compression={"method": "gzip", "mtime": 1}
+    )  # reproducible compression
     return csv_file
 
 
-# %%
 def load_data(csv_file=csv_file, update=False, update_kwargs=None):
     if update:
         if update_kwargs is not None:
@@ -199,16 +193,15 @@ def load_data(csv_file=csv_file, update=False, update_kwargs=None):
             get_data()
 
     if not csv_file.exists():
-        raise FileNotFoundError(f"The file {csv_file} does not exist! Run `pycites.get_data() to download")
+        raise FileNotFoundError(
+            f"The file {csv_file} does not exist! Run `pycites.get_data() to download"
+        )
 
     csv_md5 = checksum(csv_file)
     if csv_md5 != known_csv_md5:
         raise ValueError(
-            f"md5 sum of zip file ({csv_md5}) does not match known value: {known_csv_md5}"
+            f"md5 sum of zip file {csv_file} ({csv_md5}) does not match known value: {known_csv_md5}"
         )
 
     df = pd.read_csv(csv_file)
     return df
-
-
-# %%
